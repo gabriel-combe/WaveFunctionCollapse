@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Set, Any, Union
 from utils import to_tuple, to_ndarray, flip_dir, in_matrix, is_cell_collapsed, image_from_coefficients
 from gen_pattern import generate_patterns_and_frequencies, save_patterns
 from gen_rules import get_rules, get_dirs, print_adjacency_rules
+from args import get_opts
 
 SAVE_VIDEO = True # Record a video frame by frame
 SAVE_PATTERNS = True # Save the generated patterns
@@ -20,7 +21,9 @@ def initialize( input_path: str,
                 width: int,
                 height: int,
                 flip: bool=True,
-                rotate: bool=True) -> Tuple[np.ndarray, List[Tuple[int, int]], List[int], np.ndarray, List[Dict[Tuple[int, int], Set[int]]]]:
+                rotate: bool=True,
+                save_patterns: bool =False,
+                print_rules: bool =False) -> Tuple[np.ndarray, List[Tuple[int, int]], List[int], np.ndarray, List[Dict[Tuple[int, int], Set[int]]]]:
     # Initialize the WFC algorithm
 
     # Get all possible offset directions for patterns
@@ -32,13 +35,13 @@ def initialize( input_path: str,
     # Split the patterns and the frequencies
     patterns, frequencies = np.array(np.array([to_ndarray(tup) for tup in pattern_to_freq.keys()])), list(pattern_to_freq.values())
 
-    if SAVE_PATTERNS:
+    if save_patterns:
         save_patterns(patterns, frequencies)
 
     # Get all the rules of adjacency for all patterns
     rules = get_rules(patterns, directions)
 
-    if PRINT_RULES:
+    if print_rules:
         print_adjacency_rules(rules)
     
     # Create the coefficient_matrix representing the wave function
@@ -160,20 +163,31 @@ def propagate(min_entropy_pos: Tuple[int, int], coefficient_matrix: np.ndarray, 
     return coefficient_matrix
 
 if __name__=="__main__":
-    # Initialize the WFC algorithm
-    height = 100
-    width = 100
-    scale = 10
 
-    coefficient_matrix, directions, frequencies, patterns, rules = initialize('inputs_bitmap\Lake.png', 3, height, width, flip=True, rotate=True)
+    # Parse arguments
+    args = get_opts()
+
+    # Initialize the WFC algorithm
+    height = args.height
+    width = args.width
+    scale = args.scale
+
+    coefficient_matrix, directions, frequencies, patterns, rules = initialize(
+        args.bitmap, 
+        args.N, 
+        height, width, 
+        flip=args.flip, 
+        rotate=args.rotate, 
+        save_patterns=args.save_patterns, 
+        print_rules=args.print_rules)
 
     # Initialize control parameters
     status = 1
     iteration = 0
 
     # If we want to save the video
-    if SAVE_VIDEO:
-        outvid = cv2.VideoWriter('wfc_Lake.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30.0, (int(height * scale), int(width * scale)))
+    if args.save_video:
+        outvid = cv2.VideoWriter(args.video, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30.0, (int(height * scale), int(width * scale)))
 
     # Iterate over the steps of the algorithm: observe, collapse, propagate until the wave collapses
     while status != WAVE_COLLAPSED:
@@ -193,7 +207,7 @@ if __name__=="__main__":
         cv2.waitKey(10)
         print(f"{collapsed} cells are collapsed\n")
 
-        if SAVE_VIDEO:
+        if args.save_video:
             outvid.write(resized_image)
 
         # Propagate
@@ -201,7 +215,7 @@ if __name__=="__main__":
     
     print("The wave has collapsed!")
     
-    if SAVE_VIDEO:
+    if args.save_video:
         outvid.release()
 
     cv2.imshow(f"Wave Function Collapse", resized_image)
