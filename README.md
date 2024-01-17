@@ -1,9 +1,13 @@
 # WaveFunctionCollapse
 Simple wave function collapse in python
 
+
+https://github.com/gabriel-combe/WaveFunctionCollapse/assets/26323828/0ef741bd-2cce-4772-af71-4476504538ed
+
+
 ![](videos/wfc_Rooms.mp4)
 
-![](videos/wfc_spirals.mp4)
+videos/wfc_spirals.mp4
 
 ## Installation
 
