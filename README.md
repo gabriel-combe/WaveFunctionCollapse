@@ -1,9 +1,10 @@
 # WaveFunctionCollapse
 Simple wave function collapse in python
 
-![](videos/wfc_Rooms.mp4)
+https://github.com/gabriel-combe/WaveFunctionCollapse/assets/26323828/a8361709-0947-4e33-a0e3-7a01e92aeaa3
 
-![](videos/wfc_spirals.mp4)
+https://github.com/gabriel-combe/WaveFunctionCollapse/assets/26323828/6fdf43a6-e23b-4420-a91a-c854101b38f9
+
 
 ## Installation
 
@@ -15,6 +16,8 @@ pip install -r requirements.txt
 ```
 
 ## Usage example
+
+![wfc_MagicOffice](videos/wfc_MagicOffice.png)
 
 Run the following command to get a similar result as the image above.
 ```sh
