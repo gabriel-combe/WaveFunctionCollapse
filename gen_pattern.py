@@ -5,6 +5,7 @@ from PIL import Image as Img
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Dict, Set, Any, Union
 
+# Generate patterns and compute their associated frequencies
 def generate_patterns_and_frequencies(path: str, N:int, flip: bool=True, rotate: bool=True) -> Dict[tuple[Any, ...], int]:
     # Open the image and convert it to numpy array
     img = np.array(Img.open(path))
@@ -21,6 +22,7 @@ def generate_patterns_and_frequencies(path: str, N:int, flip: bool=True, rotate:
 
     return pattern_to_freq
 
+# Extract patterns from the image
 def patterns_from_image(img: np.ndarray, N: int, flip: bool=True, rotate: bool=True) -> List[np.ndarray]:
     # List of patterns
     patterns = []
@@ -42,6 +44,7 @@ def patterns_from_image(img: np.ndarray, N: int, flip: bool=True, rotate: bool=T
     
     return np.array(patterns, dtype='uint8')
 
+# Save the generated patterns in the output path provided
 def save_patterns(patterns: np.ndarray, freq: List[int], output_path: str = 'output') -> None:
     # Saves a list of image tiles to new image files in a given output path.
 
