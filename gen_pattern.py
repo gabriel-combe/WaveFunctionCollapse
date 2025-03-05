@@ -61,3 +61,4 @@ def save_patterns(patterns: np.ndarray, freq: List[int], output_path: str = 'out
         axs.set_yticks([])
         fig.suptitle(f"Number of occurrences: {freq[i]}, probability: {round(freq[i] / sum_of_freq, 2)}")
         plt.savefig(os.path.join(output_path, f'pattern_{i}.jpg'))
+        plt.close()
