@@ -1,5 +1,7 @@
 videos/wfc_Lake.avi
-output/
+patterns/
+outputs/
+frames/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

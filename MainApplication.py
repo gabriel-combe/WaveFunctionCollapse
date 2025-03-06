@@ -5,7 +5,7 @@ import qdarkstyle
 from PIL.ImageQt import ImageQt
 from PIL import Image
 from utils import Parameters, WFCProperties, EXTENTIONS
-from wfc import WFCSetup, runStep
+from wfc import WFCSetup, runStep, saveResult, RUNNING, CONTRADICTION, WAVE_COLLAPSED
 import sys
 import os
 
@@ -15,7 +15,9 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.app_WFCParams = Parameters()
-        self.app_WFCProperties = WFCProperties()
+
+        # Create the Worker Thread Object
+        self.instanced_thread = WorkerThread(self)
 
         self.setWindowTitle("WFC")
 
@@ -28,6 +30,7 @@ class MainWindow(QMainWindow):
         self.bitmapPathLayout = QHBoxLayout()
         self.bitmapLayout = QGridLayout()
         self.patchSizeLayout = QHBoxLayout()
+        self.outputNameLayout = QVBoxLayout()
         self.sizeLayout = QHBoxLayout()
         self.pixelSizeLayout = QHBoxLayout()
         self.resultLayout = QGridLayout()
@@ -64,6 +67,10 @@ class MainWindow(QMainWindow):
         self.printRulesCheckBox.setChecked(self.app_WFCParams.print_rules)
 
         #### Result Tab ####
+        self.outputNameLabel = QLabel(text="Output Name")
+        self.outputName = QLineEdit()
+        self.outputName.setText(self.app_WFCParams.save_pathname)
+
         self.sizeLabel = QLabel(text="Size")
         self.widthSpinBox = QSpinBox()
         self.widthSpinBox.setMinimum(5)
@@ -110,18 +117,22 @@ class MainWindow(QMainWindow):
         self.bitmapGroupBox.setLayout(self.bitmapLayout)
 
         #### Result Tab ####
+        self.outputNameLayout.addWidget(self.outputNameLabel)
+        self.outputNameLayout.addWidget(self.outputName)
+        self.resultLayout.addLayout(self.outputNameLayout, 0, 0, 1, 2)
+
         self.sizeLayout.addWidget(self.sizeLabel)
         self.sizeLayout.addWidget(self.widthSpinBox)
         self.sizeLayout.addWidget(self.sizeDividerLabel)
         self.sizeLayout.addWidget(self.heightSpinBox)
-        self.resultLayout.addLayout(self.sizeLayout, 0, 0, 1, 2)
+        self.resultLayout.addLayout(self.sizeLayout, 1, 0, 1, 2)
 
         self.pixelSizeLayout.addWidget(self.pixelSizeLabel)
         self.pixelSizeLayout.addWidget(self.pixelSizeSpinBox)
-        self.resultLayout.addLayout(self.pixelSizeLayout, 1, 0, 1, 2)
+        self.resultLayout.addLayout(self.pixelSizeLayout, 2, 0, 1, 2)
 
-        self.resultLayout.addWidget(self.recordCheckBox, 2, 0)
-        self.resultLayout.addWidget(self.saveFinalImageCheckBox, 2, 1)
+        self.resultLayout.addWidget(self.recordCheckBox, 3, 0)
+        self.resultLayout.addWidget(self.saveFinalImageCheckBox, 3, 1)
 
         self.resultGroupBox.setLayout(self.resultLayout)
 
@@ -143,7 +154,21 @@ class MainWindow(QMainWindow):
         self.layout.setAlignment(Qt.AlignTop)
 
         # Connect custom function to widget events
+        self.bitmapPath.textChanged.connect(self.onBitmapPathChanged)
+        self.outputName.textChanged.connect(self.onOutputNameChanged)
         self.bitmapSearchButton.clicked.connect(self.search)
+        self.patchSizeSpinBox.valueChanged.connect(self.onPatchSizeValueChanged)
+        self.flipCheckBox.stateChanged.connect(self.onStateChanged)
+        self.rotateCheckBox.stateChanged.connect(self.onStateChanged)
+        self.savePatternsCheckBox.stateChanged.connect(self.onStateChanged)
+        self.printRulesCheckBox.stateChanged.connect(self.onStateChanged)
+        self.widthSpinBox.valueChanged.connect(self.onWidthValueChanged)
+        self.heightSpinBox.valueChanged.connect(self.onHeightValueChanged)
+        self.pixelSizeSpinBox.valueChanged.connect(self.onPixelSizeValueChanged)
+        self.recordCheckBox.stateChanged.connect(self.onStateChanged)
+        self.saveFinalImageCheckBox.stateChanged.connect(self.onStateChanged)
+        self.generateButton.clicked.connect(self.clickGenerate)
+        self.cancelButton.clicked.connect(self.instanced_thread.stop)
 
         # Set default properties of the main window
         self.central_widget.setLayout(self.layout)
@@ -151,41 +176,54 @@ class MainWindow(QMainWindow):
 
     # Search bitmap file
     def search(self) -> None:
-        bitmapPathName = QFileDialog.getOpenFileName(caption="Open File", dir="/", filter="Bitmap (*.png, *jpg, *jpeg)")
+        bitmapPathName = QFileDialog.getOpenFileName(parent=self, caption="Open File", dir='', filter="Bitmaps (*.png *.jpg *.jpeg)")
         
         ext = os.path.splitext(bitmapPathName[0])
 
         if not os.path.exists(bitmapPathName[0]) or ext[1] not in EXTENTIONS:
             return
 
-        self.videoPath.setText(bitmapPathName[0])
+        self.bitmapPath.setText(bitmapPathName[0])
         self.app_WFCParams.input_path = bitmapPathName[0]
 
-    # Start ASCIIXEL app in a thread without saving the output
-    def clickPreview(self) -> None:
+    def onBitmapPathChanged(self, path: str) -> None:
+        self.app_WFCParams.input_path = path
+
+    def onOutputNameChanged(self, path: str) -> None:
+        self.app_WFCParams.save_pathname = path
+
+    def onStateChanged(self) -> None:
+        self.app_WFCParams.flip = self.flipCheckBox.isChecked()
+        self.app_WFCParams.rotate = self.rotateCheckBox.isChecked()
+        self.app_WFCParams.save_patterns = self.savePatternsCheckBox.isChecked()
+        self.app_WFCParams.print_rules = self.printRulesCheckBox.isChecked()
+        self.app_WFCParams.record = self.recordCheckBox.isChecked()
+        self.app_WFCParams.save_image = self.saveFinalImageCheckBox.isChecked()
+
+    def onPatchSizeValueChanged(self, value: int) -> None:
+        self.app_WFCParams.N = value
+
+    def onWidthValueChanged(self, value: int) -> None:
+        self.app_WFCParams.width = value
+
+    def onHeightValueChanged(self, value: int) -> None:
+        self.app_WFCParams.height = value
+
+    def onPixelSizeValueChanged(self, value: int) -> None:
+        self.app_WFCParams.pixel_size = value
+
+    # Start WFC app in a thread and generate the output
+    def clickGenerate(self) -> None:
         self.clickCancel()
 
-        # Set asciixel properties and run the setup
-        self.app_ASCIIXEL.reset()
-        self.app_ASCIIXEL.record = False
-        if not self.app_ASCIIXEL.setup(): return
+        # Set WFC properties and run the setup
+        if self.app_WFCParams == None: return
+        self.instanced_thread.setup(self.app_WFCParams)
 
         # Start a new thread
         self.instanced_thread.start()
 
-    # Start ASCIIXEL app in a thread and save the output
-    def clickRecord(self) -> None:
-        self.clickCancel()
-
-        # Set asciixel properties and run the setup
-        self.app_ASCIIXEL.reset()
-        self.app_ASCIIXEL.record = True
-        if not self.app_ASCIIXEL.setup(): return
-
-        # Start a new thread
-        self.instanced_thread.start()
-    
-    # Cancel the ASCIIXEL app thread
+    # Cancel the WFC app thread
     def clickCancel(self) -> None:
         # Kill thread if it is running
         if self.instanced_thread.isRunning():
@@ -203,11 +241,11 @@ class ImgSignals(QObject):
 
 # Create the Worker Thread
 class WorkerThread(QThread):
-    def __init__(self, parent = None, params: Parameters = None, properties: WFCProperties = None) -> None:
+    def __init__(self, parent = None, params: Parameters = None) -> None:
         QThread.__init__(self, parent)
 
-        self.app_WFCParams = params
-        self.app_WFCProperties = properties
+        self.app_WFCParams = None
+        self.app_WFCProperties = None
 
         self.exit = False
 
@@ -215,25 +253,30 @@ class WorkerThread(QThread):
         self.signals = ImgSignals()
         self.signals.signal_img.connect(parent.updateResultImageField)
     
+    def setup(self, params: Parameters = None) -> None:
+        self.app_WFCParams = params
+        self.app_WFCProperties = WFCSetup(self.app_WFCParams)
+
+        self.exit = False
+
     def run(self) -> None:
         if self.app_WFCParams == None or self.app_WFCProperties == None: return
 
-        while self.app_WFCProperties.status != WAVE_COLLAPSED:
+        while self.app_WFCProperties.status not in [WAVE_COLLAPSED, CONTRADICTION]:
             if self.exit:
                 self.exit = False
                 return
 
-            self.app_ASCIIXEL.runStep()
-            img = QPixmap.fromImage(ImageQt(self.app_ASCIIXEL.out_image))
+            runStep(self.app_WFCParams, self.app_WFCProperties)
+            img = QPixmap.fromImage(ImageQt(self.app_WFCProperties.current_img))
             self.signals.signal_img.emit(img)
+        
+        if self.app_WFCProperties.status == CONTRADICTION: return
 
-            if self.app_ASCIIXEL.display_original:
-                pil_img_orig = Image.fromarray(self.app_ASCIIXEL.cv2_image).convert('RGB')
-                img_orig = QPixmap.fromImage(ImageQt(pil_img_orig))
-                self.signals.signal_img_orig.emit(img_orig)
+        print("The wave has collapsed!")
+        saveResult(self.app_WFCParams, self.app_WFCProperties)
 
-        self.app_ASCIIXEL.record_video()
-    
+
     @Slot()
     def stop(self) -> None:
         self.exit = True

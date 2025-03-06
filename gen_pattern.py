@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 from utils import to_tuple
 from PIL import Image as Img
@@ -45,12 +46,13 @@ def patterns_from_image(img: np.ndarray, N: int, flip: bool=True, rotate: bool=T
     return np.array(patterns, dtype='uint8')
 
 # Save the generated patterns in the output path provided
-def save_patterns(patterns: np.ndarray, freq: List[int], output_path: str = 'output') -> None:
+def save_patterns(patterns: np.ndarray, freq: List[int], output_path: str = 'patterns') -> None:
     # Saves a list of image tiles to new image files in a given output path.
 
     # Create the output directory if it doesn't exist
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path, ignore_errors=True)
+    os.makedirs(output_path)
 
     sum_of_freq = sum(freq)
     for i in range(len(patterns)):

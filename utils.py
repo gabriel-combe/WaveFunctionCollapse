@@ -1,4 +1,8 @@
+import os
+import cv2
+import shutil
 import numpy as np
+from PIL import Image
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Set, Any, Union
 
@@ -18,7 +22,7 @@ class Parameters:
     pixel_size:     int     = 10
     record:         bool    = False
     save_image:     bool    = True
-    save_pathname:      str     = 'video\WFC_Dungeon'
+    save_pathname:  str     = 'WFC_Dungeon'
 
 @dataclass
 class WFCProperties:
@@ -29,7 +33,6 @@ class WFCProperties:
     rules:                  List[Dict[Tuple[int, int], Set[int]]]   = field(default_factory=list)
     min_entropy_pos:        Tuple[int, int]                         = (-1, -1)
     current_img:            np.ndarray                              = field(default_factory=lambda: np.zeros(shape=1, dtype=np.float64))
-    outvid:                 np.ndarray                              = field(default_factory=lambda: np.zeros(shape=1, dtype=np.float64))
     status:                 int                                     = 1
     iteration:              int                                     = 0
 
@@ -77,3 +80,27 @@ def image_from_coefficients(properties: WFCProperties) -> Tuple[int, np.ndarray]
     
     # Return the number of collapsed cells and the final image
     return np.count_nonzero(np.sum(properties.coefficient_matrix, axis=2) == 1), img
+
+def create_image(params: Parameters, properties: WFCProperties) -> int:
+    collapsed, image = image_from_coefficients(properties)
+    image = cv2.resize(image, (int(params.height * params.pixel_size), int(params.width * params.pixel_size)), interpolation = cv2.INTER_AREA)
+    image_converted = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
+    properties.current_img = Image.fromarray(image_converted)
+
+    return collapsed
+
+##### Folder Managment Functions #####
+
+# TODO Fix os.path.exists not detecting the folder
+def createFolder() -> None:
+    if os.path.exists('frames'):
+        shutil.rmtree('frames', ignore_errors=True)
+    
+    os.mkdir('frames')
+
+    if not os.path.exists('outputs'):
+        os.mkdir('outputs')
+
+def createVideo(params: Parameters) -> None:
+    os.system(f'ffmpeg -r {str(30)} -f image2 -s {int(params.width * params.pixel_size)}x{int(params.height * params.pixel_size)} -i frames/{params.save_pathname}_%05d.png  -crf 25 -vcodec libx264 -pix_fmt yuv420p outputs/{params.save_pathname}.mp4')
+    shutil.rmtree('frames', ignore_errors=True)

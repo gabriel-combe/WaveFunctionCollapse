@@ -1,11 +1,9 @@
-import cv2
 import queue
 import numpy as np
 from typing import List, Tuple, Dict, Set, Any, Union
-from utils import to_tuple, to_ndarray, flip_dir, in_matrix, is_cell_collapsed, image_from_coefficients, Parameters, WFCProperties
+from utils import *
 from gen_pattern import generate_patterns_and_frequencies, save_patterns
 from gen_rules import get_rules, get_dirs, print_adjacency_rules
-from args import get_opts
 
 SAVE_VIDEO = True # Record a video frame by frame
 SAVE_PATTERNS = True # Save the generated patterns
@@ -160,14 +158,15 @@ def propagate(properties) -> None:
                     if adjacent_cell_pos not in propagation_queue.queue:
                         propagation_queue.put(adjacent_cell_pos)
 
-def WFCSetup(param: Parameters) -> WFCProperties:
-    params = Parameters()
+def WFCSetup(params: Parameters) -> WFCProperties:
+    createFolder()
 
     properties = initialize(params)
+    create_image(params, properties)
 
     # If we want to save the video
     if params.record:
-        properties.outvid = cv2.VideoWriter(params.save_pathname+'.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30.0, (int(params.height * params.pixel_size), int(params.width * params.pixel_size)))
+        properties.current_img.save(f'frames/{params.save_pathname}_{properties.iteration:05d}.png')
 
     return properties
 
@@ -175,8 +174,6 @@ def WFCSetup(param: Parameters) -> WFCProperties:
 def runStep(params: Parameters, properties: WFCProperties) -> None:
     if properties.status == WAVE_COLLAPSED:
         print("The wave has collapsed!")
-        if params.record: properties.outvid.release()
-        if params.save_image: cv2.imwrite(params.save_pathname+'.png', properties.current_img)
         return
 
     properties.iteration += 1
@@ -186,18 +183,22 @@ def runStep(params: Parameters, properties: WFCProperties) -> None:
 
     if properties.status == CONTRADICTION:
         print("The algorithm found a contradiction\n")
-        exit(-1)
+        return
 
     # Display the current state of the wave function as an image
-    collapsed, image = image_from_coefficients(properties)
-    properties.current_img = cv2.resize(image, (int(params.height * params.pixel_size), int(params.width * params.pixel_size)), interpolation = cv2.INTER_AREA)
+    collapsed = create_image(params, properties)
     # print(f"{collapsed} cells are collapsed\n")
 
     if params.record:
-        properties.outvid.write(properties.current_img)
+        properties.current_img.save(f'frames/{params.save_pathname}_{properties.iteration:05d}.png')
 
     # Propagate
     propagate(properties)
+
+# Save the final video and image
+def saveResult(params: Parameters, properties: WFCProperties) -> None:
+    if params.record: createVideo(params)
+    if params.save_image: properties.current_img.save('outputs/'+params.save_pathname+'.png')
 
 
 if __name__=="__main__":
