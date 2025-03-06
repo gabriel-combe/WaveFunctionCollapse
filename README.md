@@ -19,12 +19,9 @@ pip install -r requirements.txt
 
 ![wfc_MagicOffice](videos/wfc_MagicOffice.png)
 
-Run the following command to get a similar result as the image above.
-```sh
-python wfc.py --bitmap inputs_bitmap\MagicOffice.png --save-video --video videos\wfc_MagicOffice.avi
-```
+Run the MainApplication python file to start WFC. You can modify the parameters of the bitmap processing and the parameters of the result. After adjusting the parameters, you can start a generation.
 
-Look at args.py to check the available arguments.
+![](img/interface.png)
 
 ## Meta
 
